@@ -1,6 +1,6 @@
 node_modules/
 .vscode
-.coverage
+coverage
 dist
 .env
 .env.example

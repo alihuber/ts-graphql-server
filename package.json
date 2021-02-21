@@ -10,7 +10,7 @@
     "start": "node dist/index.js",
     "build": "tsc",
     "debug": "node debug dist/index.js",
-    "test": "jest --detectOpenHandles",
+    "test": "jest --detectOpenHandles --collectCoverage",
     "lint": "eslint . --ext .ts"
   },
   "keywords": [],
