@@ -29,7 +29,8 @@
     "baseUrl": "."
   },
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "test"
   ],
   "include": [
     "./src/**/*.tsx",
