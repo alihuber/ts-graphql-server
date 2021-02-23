@@ -80,10 +80,12 @@ const resetDatabase = async () => {
         {
           name: 'username',
           type: 'varchar',
+          isUnique: 'true',
         },
         {
           name: 'email',
           type: 'varchar',
+          isUnique: 'true',
         },
         {
           name: 'password',
