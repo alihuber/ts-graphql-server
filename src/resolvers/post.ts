@@ -4,7 +4,6 @@ import {
   Ctx,
   Field,
   FieldResolver,
-  InputType,
   Int,
   Mutation,
   ObjectType,
@@ -17,14 +16,7 @@ import { MyContext } from 'src/types';
 import { isAuth } from '../middleware/isAuth';
 import { getConnection } from 'typeorm';
 import { User } from '../entities/user';
-
-@InputType()
-class PostInput {
-  @Field()
-  title: string;
-  @Field()
-  text: string;
-}
+import { PostInput } from './PostInput';
 
 @ObjectType()
 class PaginatedPosts {

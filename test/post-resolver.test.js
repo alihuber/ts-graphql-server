@@ -11,6 +11,10 @@ const { describe, it, expect } = require('@jest/globals');
 const gql = require('graphql-tag');
 const { User } = require('../dist/entities/user');
 const { Post } = require('../dist/entities/post');
+const {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  PostInput,
+} = require('../dist/resolvers/PostInput');
 
 const POST_QUERY = gql`
   query Post($id: Int!) {
@@ -47,6 +51,19 @@ const POSTS_QUERY = gql`
           email
         }
       }
+    }
+  }
+`;
+
+const CREATE_POST_MUTATION = gql`
+  mutation CreatePost($input: PostInput!) {
+    createPost(input: $input) {
+      id
+      createdAt
+      updatedAt
+      title
+      text
+      creatorId
     }
   }
 `;
@@ -295,6 +312,63 @@ describe('post query', () => {
       username: 'user',
       email: '',
     });
+    await closeConnection(connection);
+  });
+});
+
+describe('create post mutation', () => {
+  it('returns not authenticated error with no session', async () => {
+    await resetDatabase();
+    const connection = await getConnection();
+    const { server } = await constructTestServer({
+      context: () => ({
+        req: { session: {} },
+      }),
+    });
+    const { mutate } = createTestClient(server);
+
+    const res = await mutate({
+      mutation: CREATE_POST_MUTATION,
+      variables: {
+        input: {
+          title: 'new post',
+          text: 'some text',
+        },
+      },
+    });
+
+    expect(res.errors[0].message).toEqual('not authenticated');
+    await closeConnection(connection);
+  });
+
+  it('creates new post', async () => {
+    await resetDatabase();
+    const connection = await getConnection();
+    await User.create({
+      username: 'user',
+      password: 'abc123',
+      email: 'user@example.com',
+    }).save();
+    const { server } = await constructTestServer({
+      context: () => ({
+        req: { session: { userId: 1 } },
+      }),
+    });
+    const { mutate } = createTestClient(server);
+
+    const res = await mutate({
+      mutation: CREATE_POST_MUTATION,
+      variables: {
+        input: {
+          title: 'new post',
+          text: 'some text',
+        },
+      },
+    });
+
+    expect(res.data.createPost.id).toEqual(1);
+    expect(res.data.createPost.title).toEqual('new post');
+    expect(res.data.createPost.text).toEqual('some text');
     await closeConnection(connection);
   });
 });
