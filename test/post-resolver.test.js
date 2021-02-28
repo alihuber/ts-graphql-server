@@ -68,6 +68,17 @@ const CREATE_POST_MUTATION = gql`
   }
 `;
 
+const UPDATE_POST_MUTATION = gql`
+  mutation UpdatePost($id: Int!, $title: String!, $text: String!) {
+    updatePost(id: $id, title: $title, text: $text) {
+      id
+      title
+      text
+      textSnippet
+    }
+  }
+`;
+
 describe('posts query with no posts, no cursor', () => {
   it('returns empty array', async () => {
     await resetDatabase();
@@ -369,6 +380,103 @@ describe('create post mutation', () => {
     expect(res.data.createPost.id).toEqual(1);
     expect(res.data.createPost.title).toEqual('new post');
     expect(res.data.createPost.text).toEqual('some text');
+    await closeConnection(connection);
+  });
+});
+
+describe('update post mutation', () => {
+  it('returns not authenticated error with no session', async () => {
+    await resetDatabase();
+    const connection = await getConnection();
+    await User.create({
+      username: 'user',
+      password: 'abc123',
+      email: 'user@example.com',
+    }).save();
+    await Post.create({
+      creatorId: 1,
+      title: 'post1',
+      text: 'text post 1',
+    }).save();
+    const { server } = await constructTestServer({
+      context: () => ({
+        req: { session: {} },
+      }),
+    });
+    const { mutate } = createTestClient(server);
+
+    const res = await mutate({
+      mutation: UPDATE_POST_MUTATION,
+      variables: {
+        id: 1,
+        title: 'new post',
+        text: 'some text',
+      },
+    });
+
+    expect(res.errors[0].message).toEqual('not authenticated');
+    await closeConnection(connection);
+  });
+
+  it('returns null when post not found', async () => {
+    await resetDatabase();
+    const connection = await getConnection();
+    await User.create({
+      username: 'user',
+      password: 'abc123',
+      email: 'user@example.com',
+    }).save();
+    const { server } = await constructTestServer({
+      context: () => ({
+        req: { session: { userId: 1 } },
+      }),
+    });
+    const { mutate } = createTestClient(server);
+
+    const res = await mutate({
+      mutation: UPDATE_POST_MUTATION,
+      variables: {
+        id: 2,
+        title: 'new post',
+        text: 'some text',
+      },
+    });
+
+    expect(res.data.updatePost).toBe(null);
+    await closeConnection(connection);
+  });
+
+  it('updates post', async () => {
+    await resetDatabase();
+    const connection = await getConnection();
+    await User.create({
+      username: 'user',
+      password: 'abc123',
+      email: 'user@example.com',
+    }).save();
+    await Post.create({
+      creatorId: 1,
+      title: 'post1',
+      text: 'text post 1',
+    }).save();
+    const { server } = await constructTestServer({
+      context: () => ({
+        req: { session: { userId: 1 } },
+      }),
+    });
+    const { mutate } = createTestClient(server);
+
+    const res = await mutate({
+      mutation: UPDATE_POST_MUTATION,
+      variables: {
+        id: 1,
+        title: 'updated post',
+        text: 'some text',
+      },
+    });
+
+    expect(res.data.updatePost.title).toEqual('updated post');
+    expect(res.data.updatePost.text).toEqual('some text');
     await closeConnection(connection);
   });
 });
