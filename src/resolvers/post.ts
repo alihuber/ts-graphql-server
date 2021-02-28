@@ -58,15 +58,15 @@ export class PostResolver {
       posts = await getConnection()
         .getRepository(Post)
         .createQueryBuilder('p')
-        .orderBy('p."cratedAt"', 'DESC')
+        .orderBy('p."createdAt"', 'DESC')
         .limit(realLimitPlusOne)
         .getMany();
     } else {
       posts = await getConnection()
         .getRepository(Post)
         .createQueryBuilder('p')
-        .where('p."createdAt < :cursor"', { cursor })
-        .orderBy('p."cratedAt"', 'DESC')
+        .where('p."createdAt" < :cursor', { cursor })
+        .orderBy('p."createdAt"', 'DESC')
         .limit(realLimitPlusOne)
         .getMany();
     }

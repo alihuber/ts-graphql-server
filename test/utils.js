@@ -11,6 +11,7 @@ const { PostResolver } = require('../dist/resolvers/post');
 const { UserResolver } = require('../dist/resolvers/user');
 const { User } = require('../dist/entities/user');
 const { Post } = require('../dist/entities/post');
+const Factory = require('rosie').Factory;
 
 const constructTestServer = async ({ context }) => {
   const server = new ApolloServer({
@@ -136,9 +137,34 @@ const resetDatabase = async () => {
   await conn.close();
 };
 
+const randomDate = (start, end) => {
+  return new Date(
+    start.getTime() + Math.random() * (end.getTime() - start.getTime())
+  );
+};
+
+const getPostFactory = () => {
+  return new Factory()
+    .sequence('id')
+    .attr('createdAt', () => {
+      return randomDate(new Date('2020', '0'), new Date());
+    })
+    .attr('updatedAt', () => {
+      return new Date();
+    })
+    .sequence('title', function (i) {
+      return `Post no. ${i}`;
+    })
+    .sequence('text', function (i) {
+      return `Text for post no. ${i}`;
+    })
+    .attr('creatorId', 1);
+};
+
 module.exports = {
   resetDatabase,
   constructTestServer,
   getConnection,
   closeConnection,
+  getPostFactory,
 };

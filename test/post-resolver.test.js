@@ -5,6 +5,7 @@ const {
   constructTestServer,
   getConnection,
   closeConnection,
+  getPostFactory,
 } = require('./utils');
 const { describe, it, expect } = require('@jest/globals');
 const gql = require('graphql-tag');
@@ -29,8 +30,169 @@ const POST_QUERY = gql`
   }
 `;
 
+const POSTS_QUERY = gql`
+  query Posts($limit: Int!, $cursor: String) {
+    posts(limit: $limit, cursor: $cursor) {
+      hasMore
+      posts {
+        id
+        createdAt
+        updatedAt
+        title
+        text
+        textSnippet
+        creatorId
+        creator {
+          username
+          email
+        }
+      }
+    }
+  }
+`;
+
+describe('posts query with no posts, no cursor', () => {
+  it('returns empty array', async () => {
+    await resetDatabase();
+    const connection = await getConnection();
+    const { server } = await constructTestServer({
+      context: () => ({}),
+    });
+    const { query } = createTestClient(server);
+
+    const res = await query({ query: POSTS_QUERY, variables: { limit: 20 } });
+
+    expect(res.data.posts).toEqual({ hasMore: false, posts: [] });
+    await closeConnection(connection);
+  });
+});
+
+describe('posts query with no more posts, no cursor', () => {
+  it('returns limit length posts, hasMore', async () => {
+    await resetDatabase();
+    const connection = await getConnection();
+    await User.create({
+      username: 'user',
+      password: 'abc123',
+      email: 'user@example.com',
+    }).save();
+    const postFactory = getPostFactory();
+    for (let i = 0; i < 20; i++) {
+      const builtPost = postFactory.build();
+      await Post.create(builtPost).save();
+    }
+    const { server } = await constructTestServer({
+      context: () => ({
+        req: { session: {} },
+        userLoader: {
+          load: () => {
+            return {
+              id: 1,
+              username: 'user',
+              email: 'user@example.com',
+            };
+          },
+        },
+      }),
+    });
+    const { query } = createTestClient(server);
+
+    const res = await query({ query: POSTS_QUERY, variables: { limit: 20 } });
+    expect(res.data.posts.hasMore).toBe(false);
+    expect(res.data.posts.posts.length).toBe(20);
+    await closeConnection(connection);
+  });
+});
+
+describe('posts query with has more posts, no cursor', () => {
+  it('returns limit length posts, hasMore', async () => {
+    await resetDatabase();
+    const connection = await getConnection();
+    await User.create({
+      username: 'user',
+      password: 'abc123',
+      email: 'user@example.com',
+    }).save();
+    const postFactory = getPostFactory();
+    for (let i = 0; i < 21; i++) {
+      const builtPost = postFactory.build();
+      await Post.create(builtPost).save();
+    }
+    const { server } = await constructTestServer({
+      context: () => ({
+        req: { session: {} },
+        userLoader: {
+          load: () => {
+            return {
+              id: 1,
+              username: 'user',
+              email: 'user@example.com',
+            };
+          },
+        },
+      }),
+    });
+    const { query } = createTestClient(server);
+
+    const res = await query({ query: POSTS_QUERY, variables: { limit: 20 } });
+    expect(res.data.posts.hasMore).toBe(true);
+    expect(res.data.posts.posts.length).toBe(20);
+    await closeConnection(connection);
+  });
+});
+
+describe('posts query with has more posts, with cursor', () => {
+  it('returns cursor limited posts', async () => {
+    await resetDatabase();
+    const connection = await getConnection();
+    await User.create({
+      username: 'user',
+      password: 'abc123',
+      email: 'user@example.com',
+    }).save();
+    const postFactory = getPostFactory();
+    for (let i = 0; i < 21; i++) {
+      const builtPost = postFactory.build();
+      await Post.create(builtPost).save();
+    }
+    const { server } = await constructTestServer({
+      context: () => ({
+        req: { session: {} },
+        userLoader: {
+          load: () => {
+            return {
+              id: 1,
+              username: 'user',
+              email: 'user@example.com',
+            };
+          },
+        },
+      }),
+    });
+    const { query } = createTestClient(server);
+
+    const res1 = await query({ query: POSTS_QUERY, variables: { limit: 20 } });
+    expect(res1.data.posts.hasMore).toBe(true);
+    expect(res1.data.posts.posts.length).toBe(20);
+    const cursor = new Date(
+      parseInt(
+        res1.data.posts.posts[res1.data.posts.posts.length - 1].createdAt,
+        10
+      )
+    ).toISOString();
+    const res2 = await query({
+      query: POSTS_QUERY,
+      variables: { limit: 20, cursor },
+    });
+    expect(res2.data.posts.hasMore).toBe(false);
+    expect(res2.data.posts.posts.length).toBe(1);
+    await closeConnection(connection);
+  });
+});
+
 describe('post query', () => {
   it('returns null when no post found', async () => {
+    await resetDatabase();
     const connection = await getConnection();
     const { server } = await constructTestServer({
       context: () => ({}),
