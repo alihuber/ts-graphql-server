@@ -5,6 +5,6 @@ Boilerplate/playground implementation of a GraphQL-Server, written in TypeScript
 ### Setup
 
 - `DATABASE_URL`, `REDIS_URL`, `SESSION_SECRET`, `PORT` and `CORS_ORIGIN` should be set trough env
-- `docker compose up`
+- `docker-compose up`
 - `yarn watch`
 - `yarn dev`
