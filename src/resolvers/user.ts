@@ -14,7 +14,10 @@ import argon from 'argon2';
 import { UsernamePasswordInput } from './UsernamePasswordInput';
 import { validateRegister } from '../utils/validateRegister';
 import { sendEmail } from '../utils/sendEmail';
+import { getLogger } from '../utils/Logger';
 import { v4 } from 'uuid';
+
+const logger = getLogger('UserResolver');
 
 @Resolver(User)
 export class UserResolver {
@@ -32,7 +35,13 @@ export class UserResolver {
     @Arg('newPassword') newPassword: string,
     @Ctx() { redis, req }: MyContext
   ): Promise<UserResponse> {
+    logger.info({
+      message: `Got change password request with token ${token}`,
+    });
     if (newPassword.length <= 3) {
+      logger.warn({
+        message: `Change password error for token ${token}, password too short`,
+      });
       return {
         errors: [
           { field: 'newPassword', message: 'password must be greater than 3' },
@@ -42,11 +51,17 @@ export class UserResolver {
     const key = FORGOT_PASSWORD_PREFIX + token;
     const userId = await redis.get(key);
     if (!userId) {
+      logger.warn({
+        message: `Change password error for token ${token}, token expired`,
+      });
       return { errors: [{ field: 'token', message: 'token expired' }] };
     }
     const id = parseInt(userId, 10);
     const user = await User.findOne(id);
     if (!user) {
+      logger.warn({
+        message: `Change password error for token ${token}, user with ${userId} not found`,
+      });
       return {
         errors: [{ field: 'token', message: 'user does no longer exist' }],
       };
@@ -62,9 +77,15 @@ export class UserResolver {
     @Ctx() { redis }: MyContext,
     @Arg('email') email: string
   ): Promise<boolean> {
+    logger.info({
+      message: `Got forgot password request with email ${email}`,
+    });
     const user = await User.findOne({ where: { email } });
     if (!user) {
       // not found
+      logger.warn({
+        message: `Forgot password error with ${email}: user not found`,
+      });
       return true;
     }
     const token = v4();
@@ -75,6 +96,9 @@ export class UserResolver {
       1000 * 60 * 60 * 24 * 3 // 3 days
     );
     // TODO: real domain
+    logger.info({
+      message: `Password for user with ${user.id} reset, sending email...`,
+    });
     sendEmail(
       email,
       `<a href="http://localhost:3000/change-password/${token}">reset password</a>`
@@ -84,7 +108,13 @@ export class UserResolver {
 
   @Query(() => User, { nullable: true })
   async me(@Ctx() { req }: MyContext): Promise<User | undefined> {
+    logger.info({
+      message: `Got me query for ${req.session.userId}`,
+    });
     if (!req.session.userId) {
+      logger.warn({
+        message: 'Me query error: no session id',
+      });
       return undefined;
     }
     return await User.findOne(req.session.userId);
@@ -95,8 +125,16 @@ export class UserResolver {
     @Arg('options') options: UsernamePasswordInput,
     @Ctx() { req }: MyContext
   ): Promise<UserResponse> {
+    logger.info({
+      message: `Got register request with username: ${options.username}, email: ${options.email}`,
+    });
     const errors = validateRegister(options);
     if (errors) {
+      logger.warn({
+        message: `Register error with username: ${options.username}, email: ${
+          options.email
+        }, error: ${JSON.stringify(errors)}`,
+      });
       return { errors };
     }
     const hashedPassword = await argon.hash(options.password);
@@ -109,6 +147,9 @@ export class UserResolver {
         email: options.email,
       }).save();
     } catch (e) {
+      logger.warn({
+        message: `Register error with username: ${options.username}, email: ${options.email}, save error: ${e.message}`,
+      });
       return {
         errors: [
           {
@@ -130,6 +171,9 @@ export class UserResolver {
     @Arg('password') password: string,
     @Ctx() { req }: MyContext
   ): Promise<UserResponse> {
+    logger.info({
+      message: `Got login request with usernameOrEmail: ${usernameOrEmail}`,
+    });
     const user = await User.findOne(
       usernameOrEmail.includes('@')
         ? { where: { email: usernameOrEmail } }
@@ -137,6 +181,9 @@ export class UserResolver {
     );
     const valid = user && (await argon.verify(user.password, password));
     if (!user || !valid) {
+      logger.warn({
+        message: `Login error with usernameOrEmail: ${usernameOrEmail}`,
+      });
       return {
         errors: [
           {
@@ -154,11 +201,16 @@ export class UserResolver {
 
   @Mutation(() => Boolean)
   logout(@Ctx() { req, res }: MyContext): Promise<boolean> {
+    logger.info({
+      message: `Got logout request for: ${req.session.userId}`,
+    });
     return new Promise((resolve) =>
       req.session.destroy((err) => {
         res.clearCookie(COOKIE_NAME);
         if (err) {
-          console.log(err);
+          logger.warn({
+            message: `Logout error with: ${req.session.userId}, error: ${err.message}`,
+          });
           resolve(false);
           return;
         }

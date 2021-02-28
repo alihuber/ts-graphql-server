@@ -16,6 +16,9 @@ import { MyContext } from './types';
 import { User } from './entities/user';
 import { createUserLoader } from './utils/createUserLoader';
 import { Post } from './entities/post';
+import { getLogger } from './utils/Logger';
+
+const logger = getLogger('Server');
 
 const main = async () => {
   const conn = await createConnection({
@@ -70,7 +73,9 @@ const main = async () => {
   });
   apolloServer.applyMiddleware({ app, cors: false });
   app.listen(parseInt(process.env.PORT, 10), () => {
-    console.log('server started on localhost:4000');
+    logger.info({
+      message: `server started on port ${process.env.PORT}`,
+    });
   });
 };
 

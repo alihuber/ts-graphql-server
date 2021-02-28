@@ -17,6 +17,9 @@ import { isAuth } from '../middleware/isAuth';
 import { getConnection } from 'typeorm';
 import { User } from '../entities/user';
 import { PostInput } from './PostInput';
+import { getLogger } from '../utils/Logger';
+
+const logger = getLogger('PostResolver');
 
 @ObjectType()
 class PaginatedPosts {
@@ -46,6 +49,9 @@ export class PostResolver {
     const realLimit = Math.min(50, limit);
     const realLimitPlusOne = realLimit + 1;
     let posts: Post[];
+    logger.info({
+      message: `Got posts request with limit ${limit}, cursor ${cursor}`,
+    });
     if (!cursor) {
       posts = await getConnection()
         .getRepository(Post)
@@ -70,6 +76,9 @@ export class PostResolver {
 
   @Query(() => Post, { nullable: true })
   post(@Arg('id', () => Int) id: number): Promise<Post | undefined> {
+    logger.info({
+      message: `Got post request for id ${id}`,
+    });
     return Post.findOne(id);
   }
 
@@ -79,6 +88,9 @@ export class PostResolver {
     @Ctx() { req }: MyContext,
     @Arg('input') input: PostInput
   ): Promise<Post> {
+    logger.info({
+      message: `Got create post request for user ${req.session.userId}`,
+    });
     return Post.create({
       ...input,
       creatorId: req.session.userId,
@@ -93,8 +105,14 @@ export class PostResolver {
     @Arg('text') text: string,
     @Arg('id', () => Int) id: number
   ): Promise<Post | null> {
+    logger.info({
+      message: `Got update post request for user ${req.session.userId}, post ${id}`,
+    });
     const post = await Post.findOne(id);
     if (!post) {
+      logger.warn({
+        message: `Post with ${id} not found, returning...`,
+      });
       return null;
     }
     const result = await getConnection()
@@ -116,16 +134,28 @@ export class PostResolver {
     @Arg('id', () => Int) id: number,
     @Ctx() { req }: MyContext
   ): Promise<boolean> {
+    logger.info({
+      message: `Got delete post request for user ${req.session.userId}, post ${id}`,
+    });
     const post = await Post.findOne(id);
     if (!post) {
+      logger.warn({
+        message: `Post with ${id} not found, returning...`,
+      });
       return false;
     }
     if (post.creatorId !== req.session.userId) {
+      logger.warn({
+        message: 'Creator/session user mismatch, returning...',
+      });
       throw new Error('not authorized');
     }
     try {
       await Post.delete(id);
     } catch (e) {
+      logger.warn({
+        message: `Error deleting post, error: ${e.message}`,
+      });
       return false;
     }
     return true;

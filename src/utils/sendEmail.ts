@@ -1,7 +1,11 @@
+import { getLogger } from './Logger';
+
+const logger = getLogger('SendEmail');
+
 export function sendEmail(to: string, text: string): void {
   // const testAccount = await nodemailer.createTestAccount();
 
-  console.log(`### sending mail to ${to} with text ${text}`);
+  logger.info(`sending mail to ${to} with text ${text}`);
   // create reusable transporter object using the default SMTP transport
   // const transporter = nodemailer.createTransport({
   //   host: "smtp.ethereal.email",
