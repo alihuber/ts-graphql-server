@@ -7,7 +7,7 @@ const {
   closeConnection,
   getPostFactory,
 } = require('./utils');
-const { describe, it, expect } = require('@jest/globals');
+const { beforeEach, describe, it, expect } = require('@jest/globals');
 const gql = require('graphql-tag');
 const { User } = require('../dist/entities/user');
 const { Post } = require('../dist/entities/post');
@@ -79,9 +79,18 @@ const UPDATE_POST_MUTATION = gql`
   }
 `;
 
+const DELETE_POST_MUTATION = gql`
+  mutation DeletePost($id: Int!) {
+    deletePost(id: $id)
+  }
+`;
+
+beforeEach(async () => {
+  await resetDatabase();
+});
+
 describe('posts query with no posts, no cursor', () => {
   it('returns empty array', async () => {
-    await resetDatabase();
     const connection = await getConnection();
     const { server } = await constructTestServer({
       context: () => ({}),
@@ -97,7 +106,6 @@ describe('posts query with no posts, no cursor', () => {
 
 describe('posts query with no more posts, no cursor', () => {
   it('returns limit length posts, hasMore', async () => {
-    await resetDatabase();
     const connection = await getConnection();
     await User.create({
       username: 'user',
@@ -134,7 +142,6 @@ describe('posts query with no more posts, no cursor', () => {
 
 describe('posts query with has more posts, no cursor', () => {
   it('returns limit length posts, hasMore', async () => {
-    await resetDatabase();
     const connection = await getConnection();
     await User.create({
       username: 'user',
@@ -171,7 +178,6 @@ describe('posts query with has more posts, no cursor', () => {
 
 describe('posts query with has more posts, with cursor', () => {
   it('returns cursor limited posts', async () => {
-    await resetDatabase();
     const connection = await getConnection();
     await User.create({
       username: 'user',
@@ -220,7 +226,6 @@ describe('posts query with has more posts, with cursor', () => {
 
 describe('post query', () => {
   it('returns null when no post found', async () => {
-    await resetDatabase();
     const connection = await getConnection();
     const { server } = await constructTestServer({
       context: () => ({}),
@@ -234,7 +239,6 @@ describe('post query', () => {
   });
 
   it('returns post with all creator data when own post', async () => {
-    await resetDatabase();
     const connection = await getConnection();
     await User.create({
       username: 'user',
@@ -278,7 +282,6 @@ describe('post query', () => {
   });
 
   it('returns post with empty creator email when not own post', async () => {
-    await resetDatabase();
     const connection = await getConnection();
     await User.create({
       username: 'user',
@@ -329,7 +332,6 @@ describe('post query', () => {
 
 describe('create post mutation', () => {
   it('returns not authenticated error with no session', async () => {
-    await resetDatabase();
     const connection = await getConnection();
     const { server } = await constructTestServer({
       context: () => ({
@@ -353,13 +355,7 @@ describe('create post mutation', () => {
   });
 
   it('creates new post', async () => {
-    await resetDatabase();
     const connection = await getConnection();
-    await User.create({
-      username: 'user',
-      password: 'abc123',
-      email: 'user@example.com',
-    }).save();
     const { server } = await constructTestServer({
       context: () => ({
         req: { session: { userId: 1 } },
@@ -386,18 +382,7 @@ describe('create post mutation', () => {
 
 describe('update post mutation', () => {
   it('returns not authenticated error with no session', async () => {
-    await resetDatabase();
     const connection = await getConnection();
-    await User.create({
-      username: 'user',
-      password: 'abc123',
-      email: 'user@example.com',
-    }).save();
-    await Post.create({
-      creatorId: 1,
-      title: 'post1',
-      text: 'text post 1',
-    }).save();
     const { server } = await constructTestServer({
       context: () => ({
         req: { session: {} },
@@ -419,13 +404,7 @@ describe('update post mutation', () => {
   });
 
   it('returns null when post not found', async () => {
-    await resetDatabase();
     const connection = await getConnection();
-    await User.create({
-      username: 'user',
-      password: 'abc123',
-      email: 'user@example.com',
-    }).save();
     const { server } = await constructTestServer({
       context: () => ({
         req: { session: { userId: 1 } },
@@ -447,13 +426,7 @@ describe('update post mutation', () => {
   });
 
   it('updates post', async () => {
-    await resetDatabase();
     const connection = await getConnection();
-    await User.create({
-      username: 'user',
-      password: 'abc123',
-      email: 'user@example.com',
-    }).save();
     await Post.create({
       creatorId: 1,
       title: 'post1',
@@ -477,6 +450,103 @@ describe('update post mutation', () => {
 
     expect(res.data.updatePost.title).toEqual('updated post');
     expect(res.data.updatePost.text).toEqual('some text');
+    await closeConnection(connection);
+  });
+});
+
+describe('delete post mutation', () => {
+  it('returns not authenticated error with no session', async () => {
+    const connection = await getConnection();
+    const { server } = await constructTestServer({
+      context: () => ({
+        req: { session: {} },
+      }),
+    });
+    const { mutate } = createTestClient(server);
+
+    const res = await mutate({
+      mutation: DELETE_POST_MUTATION,
+      variables: {
+        id: 1,
+      },
+    });
+
+    expect(res.errors[0].message).toEqual('not authenticated');
+    await closeConnection(connection);
+  });
+
+  it('returns false when post not found', async () => {
+    const connection = await getConnection();
+    const { server } = await constructTestServer({
+      context: () => ({
+        req: { session: { userId: 1 } },
+      }),
+    });
+    const { mutate } = createTestClient(server);
+
+    const res = await mutate({
+      mutation: DELETE_POST_MUTATION,
+      variables: {
+        id: 1,
+      },
+    });
+
+    expect(res.data.deletePost).toBe(false);
+    await closeConnection(connection);
+  });
+
+  it('returns error when user wants to delete other users post', async () => {
+    const connection = await getConnection();
+    await Post.create({
+      creatorId: 2,
+      title: 'post1',
+      text: 'text post 1',
+    }).save();
+    const { server } = await constructTestServer({
+      context: () => ({
+        req: { session: { userId: 1 } },
+      }),
+    });
+    const { mutate } = createTestClient(server);
+
+    const res = await mutate({
+      mutation: DELETE_POST_MUTATION,
+      variables: {
+        id: 1,
+      },
+    });
+
+    expect(res.errors[0].message).toEqual('not authorized');
+    await closeConnection(connection);
+  });
+
+  it('returns true when deleted', async () => {
+    const connection = await getConnection();
+    await User.create({
+      username: 'user',
+      password: 'abc123',
+      email: 'user@example.com',
+    }).save();
+    await Post.create({
+      creatorId: 1,
+      title: 'post1',
+      text: 'text post 1',
+    }).save();
+    const { server } = await constructTestServer({
+      context: () => ({
+        req: { session: { userId: 1 } },
+      }),
+    });
+    const { mutate } = createTestClient(server);
+
+    const res = await mutate({
+      mutation: DELETE_POST_MUTATION,
+      variables: {
+        id: 1,
+      },
+    });
+
+    expect(res.data.deletePost).toBe(true);
     await closeConnection(connection);
   });
 });

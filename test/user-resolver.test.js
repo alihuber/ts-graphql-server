@@ -6,7 +6,7 @@ const {
   getConnection,
   closeConnection,
 } = require('./utils');
-const { describe, it, expect } = require('@jest/globals');
+const { beforeEach, describe, it, expect } = require('@jest/globals');
 const gql = require('graphql-tag');
 const argon = require('argon2');
 const { User } = require('../dist/entities/user');
@@ -81,9 +81,12 @@ const FORGOT_PASSWORD_MUTATION = gql`
   }
 `;
 
+beforeEach(async () => {
+  await resetDatabase();
+});
+
 describe('me query', () => {
   it('returns null with no session', async () => {
-    await resetDatabase();
     const { server } = await constructTestServer({
       context: () => ({
         user: { id: 1, username: 'user' },
@@ -98,7 +101,6 @@ describe('me query', () => {
   });
 
   it('returns user data for user in session', async () => {
-    await resetDatabase();
     const connection = await getConnection();
     await User.create({
       username: 'user',
@@ -126,7 +128,6 @@ describe('me query', () => {
 
 describe('register mutation', () => {
   it('returns errors on username already taken', async () => {
-    await resetDatabase();
     const connection = await getConnection();
     await User.create({
       username: 'user',
@@ -156,7 +157,6 @@ describe('register mutation', () => {
   });
 
   it('returns errors on email already taken', async () => {
-    await resetDatabase();
     const connection = await getConnection();
     await User.create({
       username: 'user',
@@ -271,7 +271,6 @@ describe('register mutation', () => {
   });
 
   it('returns user on successful register, creates session', async () => {
-    await resetDatabase();
     const connection = await getConnection();
     const req = { session: {} };
     const { server } = await constructTestServer({
@@ -364,7 +363,6 @@ describe('logout mutation', () => {
 
 describe('login mutation', () => {
   it('returns errors on wrong credentials', async () => {
-    await resetDatabase();
     const connection = await getConnection();
     const hashedPassword = await argon.hash('abc123');
     await User.create({
@@ -395,7 +393,6 @@ describe('login mutation', () => {
   });
 
   it('returns user on successful login, creates session', async () => {
-    await resetDatabase();
     const connection = await getConnection();
     const hashedPassword = await argon.hash('abc123');
     await User.create({
@@ -431,7 +428,6 @@ describe('login mutation', () => {
   });
 
   it('allows login with email', async () => {
-    await resetDatabase();
     const connection = await getConnection();
     const hashedPassword = await argon.hash('abc123');
     await User.create({
@@ -510,7 +506,6 @@ describe('change password mutation', () => {
   });
 
   it('returns errors on user not found', async () => {
-    await resetDatabase();
     const connection = await getConnection();
     const { server } = await constructTestServer({
       context: () => ({
@@ -538,7 +533,6 @@ describe('change password mutation', () => {
   });
 
   it('returns user on successful change password, creates session', async () => {
-    await resetDatabase();
     const connection = await getConnection();
     const hashedPassword = await argon.hash('abc123');
     await User.create({
@@ -583,7 +577,6 @@ describe('change password mutation', () => {
 
 describe('forgot password mutation', () => {
   it('returns true when user not found', async () => {
-    await resetDatabase();
     const connection = await getConnection();
     const { server } = await constructTestServer({
       context: () => ({}),
@@ -602,7 +595,6 @@ describe('forgot password mutation', () => {
   });
 
   it('returns true when reset successful', async () => {
-    await resetDatabase();
     const connection = await getConnection();
     await User.create({
       username: 'user',
