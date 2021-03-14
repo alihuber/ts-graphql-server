@@ -10,6 +10,7 @@ import path from 'path';
 import session from 'express-session';
 import connectRedis from 'connect-redis';
 import cors from 'cors';
+import { createPrometheusExporterPlugin } from '@bmatei/apollo-prometheus-exporter';
 import { PostResolver } from './resolvers/post';
 import { UserResolver } from './resolvers/user';
 import { MyContext } from './types';
@@ -30,6 +31,8 @@ const main = async () => {
   });
   const app = express();
   await conn.runMigrations();
+
+  const prometheusExporterPlugin = createPrometheusExporterPlugin({ app });
 
   const RedisStore = connectRedis(session);
   const redis = new Redis(process.env.REDIS_URL);
@@ -70,6 +73,7 @@ const main = async () => {
       redis,
       userLoader: createUserLoader(),
     }),
+    plugins: [prometheusExporterPlugin],
   });
   apolloServer.applyMiddleware({ app, cors: false });
   app.listen(parseInt(process.env.PORT, 10), () => {
