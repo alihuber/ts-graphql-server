@@ -11,6 +11,7 @@ import session from 'express-session';
 import connectRedis from 'connect-redis';
 import cors from 'cors';
 import { createPrometheusExporterPlugin } from '@bmatei/apollo-prometheus-exporter';
+import Prometheus from 'prom-client';
 import { PostResolver } from './resolvers/post';
 import { UserResolver } from './resolvers/user';
 import { MyContext } from './types';
@@ -20,6 +21,14 @@ import { Post } from './entities/post';
 import { getLogger } from './utils/Logger';
 
 const logger = getLogger('Server');
+
+const register = new Prometheus.Registry();
+
+register.setDefaultLabels({
+  app: 'ts-graphql-server',
+});
+
+Prometheus.collectDefaultMetrics({ register });
 
 const main = async () => {
   const conn = await createConnection({
@@ -32,7 +41,12 @@ const main = async () => {
   const app = express();
   await conn.runMigrations();
 
-  const prometheusExporterPlugin = createPrometheusExporterPlugin({ app });
+  const prometheusExporterPlugin = createPrometheusExporterPlugin({
+    app,
+    register,
+    defaultMetrics: true,
+    metricsEndpointPath: '/metrics',
+  });
 
   const RedisStore = connectRedis(session);
   const redis = new Redis(process.env.REDIS_URL);
@@ -62,6 +76,10 @@ const main = async () => {
     })
   );
 
+  app.get('/metrics', (_, res) => {
+    res.setHeader('Content-Type', register.contentType);
+    res.end(register.metrics());
+  });
   const apolloServer = new ApolloServer({
     schema: await buildSchema({
       resolvers: [PostResolver, UserResolver],
