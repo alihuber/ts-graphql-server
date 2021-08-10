@@ -4,6 +4,10 @@ import { createConnection } from 'typeorm';
 import { COOKIE_NAME, __prod__ } from './constants';
 import express from 'express';
 import { ApolloServer } from 'apollo-server-express';
+import {
+  ApolloServerPluginLandingPageGraphQLPlayground,
+  ApolloServerPluginLandingPageDisabled,
+} from 'apollo-server-core';
 import { buildSchema } from 'type-graphql';
 import Redis from 'ioredis';
 import path from 'path';
@@ -91,8 +95,14 @@ const main = async () => {
       redis,
       userLoader: createUserLoader(),
     }),
-    plugins: [prometheusExporterPlugin],
+    plugins: [
+      prometheusExporterPlugin,
+      process.env.NODE_ENV === 'production'
+        ? ApolloServerPluginLandingPageDisabled()
+        : ApolloServerPluginLandingPageGraphQLPlayground(),
+    ],
   });
+  await apolloServer.start();
   apolloServer.applyMiddleware({ app, cors: false });
   app.listen(parseInt(process.env.PORT, 10), () => {
     logger.info({
