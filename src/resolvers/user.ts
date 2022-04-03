@@ -57,7 +57,7 @@ export class UserResolver {
       return { errors: [{ field: 'token', message: 'token expired' }] };
     }
     const id = parseInt(userId, 10);
-    const user = await User.findOne(id);
+    const user = await User.findOneBy({ id });
     if (!user) {
       logger.warn({
         message: `Change password error for token ${token}, user with ${userId} not found`,
@@ -92,7 +92,7 @@ export class UserResolver {
     await redis.set(
       FORGOT_PASSWORD_PREFIX + token,
       user.id,
-      'ex',
+      'EX',
       1000 * 60 * 60 * 24 * 3 // 3 days
     );
     // TODO: real domain
@@ -107,7 +107,7 @@ export class UserResolver {
   }
 
   @Query(() => User, { nullable: true })
-  async me(@Ctx() { req }: MyContext): Promise<User | undefined> {
+  async me(@Ctx() { req }: MyContext): Promise<User | null> {
     logger.info({
       message: `Got me query for ${req.session.userId}`,
     });
@@ -115,9 +115,9 @@ export class UserResolver {
       logger.warn({
         message: 'Me query error: no session id',
       });
-      return undefined;
+      return null;
     }
-    return await User.findOne(req.session.userId);
+    return await User.findOneBy({ id: req.session.userId });
   }
 
   @Mutation(() => UserResponse)

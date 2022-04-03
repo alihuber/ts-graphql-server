@@ -14,7 +14,6 @@ import {
 } from 'type-graphql';
 import { MyContext } from 'src/types';
 import { isAuth } from '../middleware/isAuth';
-import { getConnection } from 'typeorm';
 import { User } from '../entities/user';
 import { PostInput } from './PostInput';
 import { getLogger } from '../utils/Logger';
@@ -53,16 +52,12 @@ export class PostResolver {
       message: `Got posts request with limit ${limit}, cursor ${cursor}`,
     });
     if (!cursor) {
-      posts = await getConnection()
-        .getRepository(Post)
-        .createQueryBuilder('p')
+      posts = await Post.createQueryBuilder('p')
         .orderBy('p."createdAt"', 'DESC')
         .limit(realLimitPlusOne)
         .getMany();
     } else {
-      posts = await getConnection()
-        .getRepository(Post)
-        .createQueryBuilder('p')
+      posts = await Post.createQueryBuilder('p')
         .where('p."createdAt" < :cursor', { cursor })
         .orderBy('p."createdAt"', 'DESC')
         .limit(realLimitPlusOne)
@@ -75,11 +70,11 @@ export class PostResolver {
   }
 
   @Query(() => Post, { nullable: true })
-  post(@Arg('id', () => Int) id: number): Promise<Post | undefined> {
+  post(@Arg('id', () => Int) id: number): Promise<Post | null> {
     logger.info({
       message: `Got post request for id ${id}`,
     });
-    return Post.findOne(id);
+    return Post.findOneBy({ id });
   }
 
   @Mutation(() => Post)
@@ -108,15 +103,14 @@ export class PostResolver {
     logger.info({
       message: `Got update post request for user ${req.session.userId}, post ${id}`,
     });
-    const post = await Post.findOne(id);
+    const post = await Post.findOneBy({ id });
     if (!post) {
       logger.warn({
         message: `Post with ${id} not found, returning...`,
       });
       return null;
     }
-    const result = await getConnection()
-      .createQueryBuilder()
+    const result = await Post.createQueryBuilder()
       .update(Post)
       .set({ title, text })
       .where('id = :id and "creatorId" = :creatorId', {
@@ -137,7 +131,7 @@ export class PostResolver {
     logger.info({
       message: `Got delete post request for user ${req.session.userId}, post ${id}`,
     });
-    const post = await Post.findOne(id);
+    const post = await Post.findOneBy({ id });
     if (!post) {
       logger.warn({
         message: `Post with ${id} not found, returning...`,

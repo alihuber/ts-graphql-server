@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import 'dotenv-safe/config';
-import { createConnection } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { COOKIE_NAME, __prod__ } from './constants';
 import express from 'express';
 import { ApolloServer } from 'apollo-server-express';
@@ -35,7 +35,9 @@ register.setDefaultLabels({
 Prometheus.collectDefaultMetrics({ register });
 
 const main = async () => {
-  const conn = await createConnection({
+  const AppDataSource = new DataSource(require('../ormconfig.json'));
+  const conn = await AppDataSource.initialize();
+  conn.setOptions({
     type: 'postgres',
     url: process.env.DATABASE_URL,
     logging: true,
@@ -43,7 +45,7 @@ const main = async () => {
     migrations: [path.join(__dirname, './migrations/*')],
   });
   const app = express();
-  await conn.runMigrations();
+  conn.runMigrations();
 
   const prometheusExporterPlugin = createPrometheusExporterPlugin({
     app,

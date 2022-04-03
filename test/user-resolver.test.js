@@ -87,6 +87,7 @@ beforeEach(async () => {
 
 describe('me query', () => {
   it('returns null with no session', async () => {
+    const connection = await getConnection();
     const { server } = await constructTestServer({
       context: () => ({
         user: { id: 1, username: 'user' },
@@ -98,6 +99,7 @@ describe('me query', () => {
     const res = await query({ query: ME_QUERY });
 
     expect(res.data.me).toBe(null);
+    await closeConnection(connection);
   });
 
   it('returns user data for user in session', async () => {
@@ -187,6 +189,7 @@ describe('register mutation', () => {
   });
 
   it('returns errors on email not valid', async () => {
+    const connection = await getConnection();
     const { server } = await constructTestServer({
       context: () => ({}),
     });
@@ -204,9 +207,11 @@ describe('register mutation', () => {
     });
 
     expect(res.data.register.errors[0].message).toEqual('invalid email');
+    await closeConnection(connection);
   });
 
   it('returns errors on password too short', async () => {
+    const connection = await getConnection();
     const { server } = await constructTestServer({
       context: () => ({}),
     });
@@ -226,9 +231,11 @@ describe('register mutation', () => {
     expect(res.data.register.errors[0].message).toEqual(
       'password must be greater than 3'
     );
+    await closeConnection(connection);
   });
 
   it('returns errors on username too short', async () => {
+    const connection = await getConnection();
     const { server } = await constructTestServer({
       context: () => ({}),
     });
@@ -248,9 +255,11 @@ describe('register mutation', () => {
     expect(res.data.register.errors[0].message).toEqual(
       'username must be greater than 2'
     );
+    await closeConnection(connection);
   });
 
   it('returns errors on username invalid', async () => {
+    const connection = await getConnection();
     const { server } = await constructTestServer({
       context: () => ({}),
     });
@@ -268,6 +277,7 @@ describe('register mutation', () => {
     });
 
     expect(res.data.register.errors[0].message).toEqual('cannot include @');
+    await closeConnection(connection);
   });
 
   it('returns user on successful register, creates session', async () => {
@@ -305,6 +315,7 @@ describe('register mutation', () => {
 
 describe('logout mutation', () => {
   it('returns false on error', async () => {
+    const connection = await getConnection();
     const req = {
       session: {
         destroy: (cb) => {
@@ -330,9 +341,11 @@ describe('logout mutation', () => {
     });
 
     expect(result.data.logout).toBe(false);
+    await closeConnection(connection);
   });
 
   it('returns true on success', async () => {
+    const connection = await getConnection();
     const req = {
       session: {
         destroy: (cb) => {
@@ -358,6 +371,7 @@ describe('logout mutation', () => {
     });
 
     expect(result.data.logout).toBe(true);
+    await closeConnection(connection);
   });
 });
 
@@ -464,6 +478,7 @@ describe('login mutation', () => {
 
 describe('change password mutation', () => {
   it('returns errors on password too short', async () => {
+    const connection = await getConnection();
     const { server } = await constructTestServer({
       context: () => ({}),
     });
@@ -480,9 +495,11 @@ describe('change password mutation', () => {
     expect(res.data.changePassword.errors[0].message).toEqual(
       'password must be greater than 3'
     );
+    await closeConnection(connection);
   });
 
   it('returns errors on no token entry', async () => {
+    const connection = await getConnection();
     const { server } = await constructTestServer({
       context: () => ({
         redis: {
@@ -503,6 +520,7 @@ describe('change password mutation', () => {
     });
 
     expect(res.data.changePassword.errors[0].message).toEqual('token expired');
+    await closeConnection(connection);
   });
 
   it('returns errors on user not found', async () => {

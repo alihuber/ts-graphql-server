@@ -16,7 +16,7 @@ declare global {
 export type MyContext = {
   req: Request & { session: Express.Session };
   res: Response;
-  redis: Redis.Redis;
+  redis: Redis;
   userLoader: ReturnType<typeof createUserLoader>;
 };
 

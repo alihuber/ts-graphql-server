@@ -6,7 +6,7 @@ require('dotenv-safe').config({
 require('reflect-metadata');
 const { ApolloServer } = require('apollo-server-express');
 const { buildSchema } = require('type-graphql');
-const { createConnection, Table } = require('typeorm');
+const { Table, DataSource } = require('typeorm');
 const { PostResolver } = require('../dist/resolvers/post');
 const { UserResolver } = require('../dist/resolvers/user');
 const { User } = require('../dist/entities/user');
@@ -25,13 +25,16 @@ const constructTestServer = async ({ context }) => {
 };
 
 const getConnection = async () => {
-  return await createConnection({
+  const AppDataSource = new DataSource(require('../ormconfig.json'));
+  const conn = await AppDataSource.initialize();
+  conn.setOptions({
     type: 'postgres',
     url: process.env.DATABASE_URL,
     // logging: true,
     entities: [User, Post],
     migrations: [path.join(__dirname, '../dist/migrations/*')],
   });
+  return conn;
 };
 
 const closeConnection = async (connection) => {
@@ -39,13 +42,7 @@ const closeConnection = async (connection) => {
 };
 
 const resetDatabase = async () => {
-  const conn = await createConnection({
-    type: 'postgres',
-    url: process.env.DATABASE_URL,
-    // logging: true,
-    entities: [User, Post],
-    migrations: [path.join(__dirname, '../dist/migrations/*')],
-  });
+  const conn = await getConnection();
   const queryRunner = await conn.createQueryRunner();
   try {
     await queryRunner.dropTable('post');
