@@ -60,7 +60,7 @@ const main = async () => {
   app.set('trust proxy', 1);
   app.use(
     cors({
-      origin: process.env.CORS_ORIGIN,
+      origin: [process.env.CORS_ORIGIN, process.env.MOBILE_CORS_ORIGIN],
       credentials: true,
     })
   );
@@ -74,7 +74,7 @@ const main = async () => {
         secure: __prod__,
         sameSite: 'lax', // csrf
         // TODO: real domain
-        domain: __prod__ ? '.real.com' : undefined,
+        domain: __prod__ ? '.real.com' : '192.168.0.13',
       },
       secret: process.env.SESSION_SECRET,
       resave: false,

@@ -1,5 +1,6 @@
 import { User } from '../entities/user';
 import { MyContext, UserResponse } from '../types';
+import { generateJwt } from '../utils/createJWT';
 import { COOKIE_NAME, FORGOT_PASSWORD_PREFIX } from '../constants';
 import {
   Arg,
@@ -16,6 +17,8 @@ import { validateRegister } from '../utils/validateRegister';
 import { sendEmail } from '../utils/sendEmail';
 import { getLogger } from '../utils/Logger';
 import { v4 } from 'uuid';
+
+const jwt = require('jsonwebtoken');
 
 const logger = getLogger('UserResolver');
 
@@ -95,29 +98,42 @@ export class UserResolver {
       'EX',
       1000 * 60 * 60 * 24 * 3 // 3 days
     );
-    // TODO: real domain
     logger.info({
       message: `Password for user with ${user.id} reset, sending email...`,
     });
     sendEmail(
       email,
-      `<a href="http://localhost:3000/change-password/${token}">reset password</a>`
+      `<a href="http://${process.env.CORS_ORIGIN}/change-password/${token}">reset password</a>`
     );
     return true;
   }
 
   @Query(() => User, { nullable: true })
   async me(@Ctx() { req }: MyContext): Promise<User | null> {
-    logger.info({
-      message: `Got me query for ${req.session.userId}`,
-    });
-    if (!req.session.userId) {
-      logger.warn({
-        message: 'Me query error: no session id',
+    if (req?.headers?.origin === 'capacitor://localhost') {
+      const authHeader = req.headers.authorization;
+      try {
+        const token = authHeader?.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
+        return await User.findOneBy({ id: decoded.id });
+      } catch (err) {
+        logger.warn({
+          message: 'Me query error: could not verify token: ' + err.message,
+        });
+        return null;
+      }
+    } else {
+      logger.info({
+        message: `Got me query for ${req.session.userId}`,
       });
-      return null;
+      if (!req.session.userId) {
+        logger.warn({
+          message: 'Me query error: no session id',
+        });
+        return null;
+      }
+      return await User.findOneBy({ id: req.session.userId });
     }
-    return await User.findOneBy({ id: req.session.userId });
   }
 
   @Mutation(() => UserResponse)
@@ -159,6 +175,7 @@ export class UserResolver {
         ],
       };
     }
+    // TODO: generate token
     if (user) {
       req.session.userId = user.id;
     }
@@ -193,14 +210,23 @@ export class UserResolver {
         ],
       };
     }
-    req.session.userId = user.id;
-    return {
-      user,
-    };
+    if (req?.headers?.origin === 'capacitor://localhost') {
+      const jwt = generateJwt(user.id, user.username, user.email);
+      return {
+        user,
+        jwt,
+      };
+    } else {
+      req.session.userId = user.id;
+      return {
+        user,
+      };
+    }
   }
 
   @Mutation(() => Boolean)
   logout(@Ctx() { req, res }: MyContext): Promise<boolean> {
+    // TODO: when called with token
     logger.info({
       message: `Got logout request for: ${req.session.userId}`,
     });
