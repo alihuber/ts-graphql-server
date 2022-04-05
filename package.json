@@ -6,10 +6,10 @@
   "scripts": {
     "gen-env": "gen-env-types .env -o src/env.d.ts -e .",
     "watch": "tsc -w",
-    "dev": "nodemon dist/index.js",
+    "dev": "tsc && nodemon dist/index.js",
     "start": "node dist/index.js",
     "build": "tsc",
-    "debug": "node debug dist/index.js",
+    "debug": "node --inspect-brk dist/index.js",
     "test": "yarn build && jest --detectOpenHandles --collectCoverage",
     "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
     "lint": "eslint . --ext .ts"

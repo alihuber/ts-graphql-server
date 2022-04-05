@@ -20,6 +20,14 @@ export type MyContext = {
   userLoader: ReturnType<typeof createUserLoader>;
 };
 
+export type DecodedToken = {
+  id: number;
+  username: string;
+  password: string;
+  email: string;
+  exp: number;
+};
+
 @ObjectType()
 export class FieldError {
   @Field()

@@ -1,6 +1,6 @@
 import { User } from '../entities/user';
 import { MyContext, UserResponse } from '../types';
-import { generateJwt } from '../utils/createJWT';
+import { decodeToken, generateJwt } from '../utils/jwtUtils';
 import { COOKIE_NAME, FORGOT_PASSWORD_PREFIX } from '../constants';
 import {
   Arg,
@@ -17,8 +17,6 @@ import { validateRegister } from '../utils/validateRegister';
 import { sendEmail } from '../utils/sendEmail';
 import { getLogger } from '../utils/Logger';
 import { v4 } from 'uuid';
-
-const jwt = require('jsonwebtoken');
 
 const logger = getLogger('UserResolver');
 
@@ -109,30 +107,11 @@ export class UserResolver {
   }
 
   @Query(() => User, { nullable: true })
-  async me(@Ctx() { req }: MyContext): Promise<User | null> {
-    if (req?.headers?.origin === 'capacitor://localhost') {
-      const authHeader = req.headers.authorization;
-      try {
-        const token = authHeader?.split(' ')[1];
-        const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
-        return await User.findOneBy({ id: decoded.id });
-      } catch (err) {
-        logger.warn({
-          message: 'Me query error: could not verify token: ' + err.message,
-        });
-        return null;
-      }
+  async me(@Ctx() context: MyContext): Promise<User | null> {
+    if (context.req?.headers?.origin === 'capacitor://localhost') {
+      return this.getMobileMe(context);
     } else {
-      logger.info({
-        message: `Got me query for ${req.session.userId}`,
-      });
-      if (!req.session.userId) {
-        logger.warn({
-          message: 'Me query error: no session id',
-        });
-        return null;
-      }
-      return await User.findOneBy({ id: req.session.userId });
+      return this.getMe(context);
     }
   }
 
@@ -175,11 +154,18 @@ export class UserResolver {
         ],
       };
     }
-    // TODO: generate token
+    let jwt;
     if (user) {
-      req.session.userId = user.id;
+      if (req?.headers?.origin === 'capacitor://localhost') {
+        jwt = await generateJwt(user.id, user.username, user.email);
+      } else {
+        req.session.userId = user.id;
+      }
     }
-    return { user };
+    return {
+      user,
+      jwt,
+    };
   }
 
   @Mutation(() => UserResponse)
@@ -211,7 +197,7 @@ export class UserResolver {
       };
     }
     if (req?.headers?.origin === 'capacitor://localhost') {
-      const jwt = generateJwt(user.id, user.username, user.email);
+      const jwt = await generateJwt(user.id, user.username, user.email);
       return {
         user,
         jwt,
@@ -225,8 +211,62 @@ export class UserResolver {
   }
 
   @Mutation(() => Boolean)
-  logout(@Ctx() { req, res }: MyContext): Promise<boolean> {
-    // TODO: when called with token
+  logout(@Ctx() context: MyContext): Promise<boolean> {
+    if (context.req?.headers?.origin === 'capacitor://localhost') {
+      return this.handleMobileLogout(context);
+    } else {
+      return this.handleLogout(context);
+    }
+  }
+
+  private async getMe(context: MyContext): Promise<User | null> {
+    logger.info({
+      message: `Got me query for ${context.req.session.userId}`,
+    });
+    if (!context.req.session.userId) {
+      logger.warn({
+        message: 'Me query error: no session id',
+      });
+      return null;
+    }
+    return await User.findOneBy({ id: context.req.session.userId });
+  }
+
+  private async getMobileMe(context: MyContext): Promise<User | null> {
+    try {
+      const decoded = await decodeToken(context);
+      if (decoded) {
+        return await User.findOneBy({ id: decoded.id });
+      } else return null;
+    } catch (err) {
+      logger.warn({
+        message: 'Me query error: could not verify token: ' + err.message,
+      });
+      return null;
+    }
+  }
+
+  private handleMobileLogout(context: MyContext): Promise<boolean> {
+    return new Promise(async (resolve) => {
+      try {
+        const decoded = await decodeToken(context);
+        if (decoded) {
+          // TODO: nothing yet, remove token from known tokens etc.
+          logger.info({
+            message: `Got logout request for: ${decoded.id}`,
+          });
+          resolve(true);
+        }
+      } catch (err) {
+        logger.warn({
+          message: 'Logout error: could not verify token: ' + err.message,
+        });
+        resolve(false);
+      }
+    });
+  }
+
+  private handleLogout({ req, res }: MyContext): Promise<boolean> {
     logger.info({
       message: `Got logout request for: ${req.session.userId}`,
     });
