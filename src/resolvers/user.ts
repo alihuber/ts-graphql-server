@@ -140,6 +140,7 @@ export class UserResolver {
         username: options.username,
         password: hashedPassword,
         email: options.email,
+        admin: false,
       }).save();
     } catch (e) {
       logger.warn({

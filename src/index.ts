@@ -1,6 +1,5 @@
 import 'reflect-metadata';
 import 'dotenv-safe/config';
-import { DataSource } from 'typeorm';
 import { COOKIE_NAME, __prod__ } from './constants';
 import express from 'express';
 import { ApolloServer } from 'apollo-server-express';
@@ -10,7 +9,6 @@ import {
 } from 'apollo-server-core';
 import { buildSchema } from 'type-graphql';
 import Redis from 'ioredis';
-import path from 'path';
 import session from 'express-session';
 import connectRedis from 'connect-redis';
 import cors from 'cors';
@@ -19,10 +17,9 @@ import Prometheus from 'prom-client';
 import { PostResolver } from './resolvers/post';
 import { UserResolver } from './resolvers/user';
 import { MyContext } from './types';
-import { User } from './entities/user';
 import { createUserLoader } from './utils/createUserLoader';
-import { Post } from './entities/post';
 import { getLogger } from './utils/Logger';
+import { AppDataSource } from './data-source';
 
 const logger = getLogger('Server');
 
@@ -35,15 +32,7 @@ register.setDefaultLabels({
 Prometheus.collectDefaultMetrics({ register });
 
 const main = async () => {
-  const AppDataSource = new DataSource(require('../ormconfig.json'));
   const conn = await AppDataSource.initialize();
-  conn.setOptions({
-    type: 'postgres',
-    url: process.env.DATABASE_URL,
-    logging: true,
-    entities: [User, Post],
-    migrations: [path.join(__dirname, './migrations/*')],
-  });
   const app = express();
   conn.runMigrations();
 

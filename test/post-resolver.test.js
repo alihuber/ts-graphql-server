@@ -111,6 +111,7 @@ describe('posts query with no more posts, no cursor', () => {
       username: 'user',
       password: 'abc123',
       email: 'user@example.com',
+      admin: false,
     }).save();
     const postFactory = getPostFactory();
     for (let i = 0; i < 20; i++) {
@@ -147,6 +148,7 @@ describe('posts query with has more posts, no cursor', () => {
       username: 'user',
       password: 'abc123',
       email: 'user@example.com',
+      admin: false,
     }).save();
     const postFactory = getPostFactory();
     for (let i = 0; i < 21; i++) {
@@ -183,6 +185,7 @@ describe('posts query with has more posts, with cursor', () => {
       username: 'user',
       password: 'abc123',
       email: 'user@example.com',
+      admin: false,
     }).save();
     const postFactory = getPostFactory();
     for (let i = 0; i < 21; i++) {
@@ -244,6 +247,7 @@ describe('post query', () => {
       username: 'user',
       password: 'abc123',
       email: 'user@example.com',
+      admin: false,
     }).save();
     await Post.create({
       creatorId: 1,
@@ -287,11 +291,13 @@ describe('post query', () => {
       username: 'user',
       password: 'abc123',
       email: 'user@example.com',
+      admin: false,
     }).save();
     await User.create({
       username: 'other user',
       password: 'abc123',
       email: 'user2@example.com',
+      admin: false,
     }).save();
     await Post.create({
       creatorId: 1,
@@ -526,6 +532,7 @@ describe('delete post mutation', () => {
       username: 'user',
       password: 'abc123',
       email: 'user@example.com',
+      admin: false,
     }).save();
     await Post.create({
       creatorId: 1,

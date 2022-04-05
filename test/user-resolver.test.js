@@ -108,6 +108,7 @@ describe('me query', () => {
       username: 'user',
       password: 'abc123',
       email: 'user@example.com',
+      admin: false,
     }).save();
 
     const { server } = await constructTestServer({
@@ -135,6 +136,7 @@ describe('register mutation', () => {
       username: 'user',
       password: 'abc123',
       email: 'user@example.com',
+      admin: false,
     }).save();
     const { server } = await constructTestServer({
       context: () => ({}),
@@ -164,6 +166,7 @@ describe('register mutation', () => {
       username: 'user',
       password: 'abc123',
       email: 'user@example.com',
+      admin: false,
     }).save();
 
     const { server } = await constructTestServer({
@@ -383,6 +386,7 @@ describe('login mutation', () => {
       username: 'user',
       password: hashedPassword,
       email: 'user@example.com',
+      admin: false,
     }).save();
     const req = { session: {} };
     const { server } = await constructTestServer({
@@ -413,6 +417,7 @@ describe('login mutation', () => {
       username: 'user',
       password: hashedPassword,
       email: 'user@example.com',
+      admin: false,
     }).save();
     const req = { session: {} };
     const { server } = await constructTestServer({
@@ -448,6 +453,7 @@ describe('login mutation', () => {
       username: 'user',
       password: hashedPassword,
       email: 'user@example.com',
+      admin: false,
     }).save();
     const req = { session: {} };
     const { server } = await constructTestServer({
@@ -557,6 +563,7 @@ describe('change password mutation', () => {
       username: 'user',
       password: hashedPassword,
       email: 'user@example.com',
+      admin: false,
     }).save();
     const req = { session: {} };
     const { server } = await constructTestServer({
@@ -618,6 +625,7 @@ describe('forgot password mutation', () => {
       username: 'user',
       password: 'abc123',
       email: 'user@example.com',
+      admin: false,
     }).save();
     const { server } = await constructTestServer({
       context: () => ({

@@ -1,16 +1,14 @@
 /* eslint-disable @typescript-eslint/no-var-requires, no-console */
-const path = require('path');
 require('dotenv-safe').config({
   path: './.env.test',
 });
 require('reflect-metadata');
 const { ApolloServer } = require('apollo-server-express');
 const { buildSchema } = require('type-graphql');
-const { Table, DataSource } = require('typeorm');
+const { Table } = require('typeorm');
 const { PostResolver } = require('../dist/resolvers/post');
 const { UserResolver } = require('../dist/resolvers/user');
-const { User } = require('../dist/entities/user');
-const { Post } = require('../dist/entities/post');
+const { AppDataSource } = require('./test-data-source');
 const Factory = require('rosie').Factory;
 
 const constructTestServer = async ({ context }) => {
@@ -25,16 +23,10 @@ const constructTestServer = async ({ context }) => {
 };
 
 const getConnection = async () => {
-  const AppDataSource = new DataSource(require('../ormconfig.json'));
-  const conn = await AppDataSource.initialize();
-  conn.setOptions({
-    type: 'postgres',
-    url: process.env.DATABASE_URL,
-    // logging: true,
-    entities: [User, Post],
-    migrations: [path.join(__dirname, '../dist/migrations/*')],
-  });
-  return conn;
+  if (!AppDataSource.isInitialized) {
+    await AppDataSource.initialize();
+  }
+  return AppDataSource;
 };
 
 const closeConnection = async (connection) => {
@@ -89,6 +81,10 @@ const resetDatabase = async () => {
           name: 'password',
           type: 'varchar',
         },
+        {
+          name: 'admin',
+          type: 'boolean',
+        },
       ],
     }),
     true
@@ -131,7 +127,7 @@ const resetDatabase = async () => {
     true
   );
   await conn.runMigrations();
-  await conn.close();
+  await conn.destroy();
 };
 
 const randomDate = (start, end) => {

@@ -38,4 +38,8 @@ export class User extends BaseEntity {
 
   @Column()
   password!: string;
+
+  @Field()
+  @Column()
+  admin!: boolean;
 }
