@@ -1,15 +1,11 @@
 import { User } from '../entities/user';
-import { MyContext } from '../types';
 import {
   Arg,
-  Ctx,
   Field,
-  FieldResolver,
   Int,
   ObjectType,
   Query,
   Resolver,
-  Root,
   UseMiddleware,
 } from 'type-graphql';
 import { getLogger } from '../utils/Logger';
@@ -27,14 +23,6 @@ class PaginatedUsers {
 
 @Resolver(User)
 export class AdminUserResolver {
-  @FieldResolver(() => String)
-  email(@Root() user: User, @Ctx() { req }: MyContext): string | null {
-    if (req.session.userId === user.id) {
-      return user.email;
-    }
-    return '';
-  }
-
   @Query(() => PaginatedUsers)
   @UseMiddleware(isAdmin)
   async users(
@@ -63,5 +51,11 @@ export class AdminUserResolver {
       users: users.slice(0, realLimit),
       hasMore: users.length === realLimitPlusOne,
     };
+  }
+
+  @Query(() => User, { nullable: true })
+  @UseMiddleware(isAdmin)
+  async user(@Arg('userId', () => Int) userId: number): Promise<User | null> {
+    return await User.findOneBy({ id: userId });
   }
 }

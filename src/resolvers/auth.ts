@@ -2,15 +2,7 @@ import { User } from '../entities/user';
 import { MyContext, UserResponse } from '../types';
 import { decodeToken, generateJwt } from '../utils/jwtUtils';
 import { COOKIE_NAME, FORGOT_PASSWORD_PREFIX } from '../constants';
-import {
-  Arg,
-  Ctx,
-  FieldResolver,
-  Mutation,
-  Query,
-  Resolver,
-  Root,
-} from 'type-graphql';
+import { Arg, Ctx, Mutation, Query, Resolver } from 'type-graphql';
 import argon from 'argon2';
 import { UsernamePasswordInput } from './UsernamePasswordInput';
 import { validateRegister } from '../utils/validateRegister';
@@ -22,14 +14,6 @@ const logger = getLogger('AuthResolver');
 
 @Resolver(User)
 export class AuthResolver {
-  @FieldResolver(() => String)
-  email(@Root() user: User, @Ctx() { req }: MyContext): string | null {
-    if (req.session.userId === user.id) {
-      return user.email;
-    }
-    return '';
-  }
-
   @Mutation(() => UserResponse)
   async changePassword(
     @Arg('token') token: string,

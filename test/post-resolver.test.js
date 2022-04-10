@@ -330,7 +330,7 @@ describe('post query', () => {
     expect(res.data.post.creatorId).toEqual(1);
     expect(res.data.post.creator).toEqual({
       username: 'user',
-      email: '',
+      email: 'user@example.com',
     });
     await closeConnection(connection);
   });
