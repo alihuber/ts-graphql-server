@@ -7,14 +7,15 @@ const { ApolloServer } = require('apollo-server-express');
 const { buildSchema } = require('type-graphql');
 const { Table } = require('typeorm');
 const { PostResolver } = require('../dist/resolvers/post');
-const { UserResolver } = require('../dist/resolvers/user');
+const { AuthResolver } = require('../dist/resolvers/auth');
+const { AdminUserResolver } = require('../dist/resolvers/adminUsers');
 const { AppDataSource } = require('./test-data-source');
 const Factory = require('rosie').Factory;
 
 const constructTestServer = async ({ context }) => {
   const server = new ApolloServer({
     schema: await buildSchema({
-      resolvers: [PostResolver, UserResolver],
+      resolvers: [PostResolver, AuthResolver, AdminUserResolver],
       validate: false,
     }),
     context,
@@ -154,10 +155,54 @@ const getPostFactory = () => {
     .attr('creatorId', 1);
 };
 
+const getUserFactory = () => {
+  return new Factory()
+    .sequence('id')
+    .attr('createdAt', () => {
+      return randomDate(new Date('2020', '0'), new Date());
+    })
+    .attr('updatedAt', () => {
+      return new Date();
+    })
+    .sequence('username', function (i) {
+      return `user${i}`;
+    })
+    .sequence('email', function (i) {
+      return `test${i}@example.com`;
+    })
+    .sequence('password', function (i) {
+      return `password${i}`;
+    })
+    .attr('admin', false);
+};
+
+const getAdminUserFactory = () => {
+  return new Factory()
+    .sequence('id')
+    .attr('createdAt', () => {
+      return randomDate(new Date('2020', '0'), new Date());
+    })
+    .attr('updatedAt', () => {
+      return new Date();
+    })
+    .attr('username', function () {
+      return 'admin';
+    })
+    .attr('email', function () {
+      return `admin@example.com`;
+    })
+    .sequence('password', function (i) {
+      return 'adminadmin';
+    })
+    .attr('admin', true);
+};
+
 module.exports = {
   resetDatabase,
   constructTestServer,
   getConnection,
   closeConnection,
   getPostFactory,
+  getUserFactory,
+  getAdminUserFactory,
 };

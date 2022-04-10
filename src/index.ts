@@ -15,7 +15,8 @@ import cors from 'cors';
 import { createPrometheusExporterPlugin } from '@bmatei/apollo-prometheus-exporter';
 import Prometheus from 'prom-client';
 import { PostResolver } from './resolvers/post';
-import { UserResolver } from './resolvers/user';
+import { AuthResolver } from './resolvers/auth';
+import { AdminUserResolver } from './resolvers/adminUsers';
 import { MyContext } from './types';
 import { createUserLoader } from './utils/createUserLoader';
 import { getLogger } from './utils/Logger';
@@ -77,7 +78,7 @@ const main = async () => {
   });
   const apolloServer = new ApolloServer({
     schema: await buildSchema({
-      resolvers: [PostResolver, UserResolver],
+      resolvers: [PostResolver, AuthResolver, AdminUserResolver],
       validate: false,
     }),
     context: ({ req, res }): MyContext => ({

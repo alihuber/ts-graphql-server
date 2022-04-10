@@ -18,10 +18,10 @@ import { sendEmail } from '../utils/sendEmail';
 import { getLogger } from '../utils/Logger';
 import { v4 } from 'uuid';
 
-const logger = getLogger('UserResolver');
+const logger = getLogger('AuthResolver');
 
 @Resolver(User)
-export class UserResolver {
+export class AuthResolver {
   @FieldResolver(() => String)
   email(@Root() user: User, @Ctx() { req }: MyContext): string | null {
     if (req.session.userId === user.id) {
